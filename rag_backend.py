@@ -12,6 +12,7 @@ EMBEDDING_MODEL = 'text-embedding-004' # The optimal embedding model for RAG
 # Initialize the Gemini Client
 # Ensure you have your GEMINI_API_KEY set as an environment variable, 
 # or replace 'os.environ.get("GEMINI_API_KEY")' with your key string.
+
 try:
     client = genai.Client()
 except Exception as e:
@@ -61,7 +62,7 @@ def load_and_chunk_data(data_path):
 
 def create_and_save_vector_store(chunks, metadata_list):
     """
-    Embeds the text chunks and saves them to a FAISS index on disk.
+    Embeds the text chunks IN BATCHES and saves them to a FAISS index on disk.
     """
     if not chunks or not client:
         print("⚠️ No data chunks found or Gemini client is not initialized. Exiting.")
@@ -69,20 +70,42 @@ def create_and_save_vector_store(chunks, metadata_list):
 
     print(f"🚀 Embedding {len(chunks)} chunks using {EMBEDDING_MODEL}...")
 
+    # --- BATCHING CONFIGURATION ---
+    BATCH_SIZE = 50  # Safe size (well under the 100 limit)
+    all_embeddings = []
+
     try:
-        # 1. Embed the chunks
-        response = client.models.embed_content(
-            model=EMBEDDING_MODEL,
-            content=chunks,
-            task_type="RETRIEVAL_DOCUMENT"
-        )
-        
-        embeddings = np.array(response.embedding)
+        # Loop through the chunks in batches
+        for i in range(0, len(chunks), BATCH_SIZE):
+            batch = chunks[i : i + BATCH_SIZE]
+            print(f"   Processing batch {i} to {i + len(batch)}...")
+
+            response = client.models.embed_content(
+                model=EMBEDDING_MODEL,
+                contents=batch,
+                config=genai.types.EmbedContentConfig(
+                    task_type="RETRIEVAL_DOCUMENT"
+                )
+            )
+
+            # Extract vectors from this batch
+            if hasattr(response, 'embeddings'):
+                batch_embeddings = [e.values for e in response.embeddings]
+                all_embeddings.extend(batch_embeddings)
+            else:
+                # Fallback for single embedding edge cases (rare in batches)
+                print("⚠️ Unexpected batch response format. Skipping batch.")
+
+        # Convert list of lists to numpy array
+        if not all_embeddings:
+            print("❌ No embeddings were generated. Exiting.")
+            return
+
+        embeddings = np.array(all_embeddings)
 
         # 2. Create the FAISS index
         dimension = embeddings.shape[1]
-        # We use an IndexFlatL2 for simple Euclidean distance search
-        index = faiss.IndexFlatL2(dimension) 
+        index = faiss.IndexFlatL2(dimension)
         
         # Add the vectors to the index
         index.add(embeddings)
@@ -90,7 +113,7 @@ def create_and_save_vector_store(chunks, metadata_list):
         # 3. Save the index to disk
         faiss.write_index(index, VECTOR_STORE_FILE)
         
-        # 4. Save the metadata (we need this to link vectors back to original text/URL)
+        # 4. Save the metadata
         with open(VECTOR_STORE_FILE + "_metadata.json", 'w', encoding='utf-8') as f:
             json.dump({
                 "chunks": chunks, 
@@ -104,7 +127,8 @@ def create_and_save_vector_store(chunks, metadata_list):
         print(f"❌ Gemini API Error during embedding: {e}")
     except Exception as e:
         print(f"❌ An unexpected error occurred: {e}")
-
+        import traceback
+        traceback.print_exc()
 
 if __name__ == "__main__":
     text_chunks, metadata = load_and_chunk_data(DATA_FILE)

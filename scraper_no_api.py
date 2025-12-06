@@ -65,7 +65,7 @@ def main():
             comments_data = data[1]['data']['children']
             top_answers = []
             
-            for comment in comments_data[:10]:
+            for comment in comments_data[:]:
                 # Ignore "more" tags or empty data
                 if comment['kind'] == 't1': # t1 is a comment
                     body = comment['data'].get('body', '')

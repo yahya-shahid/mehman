@@ -9,7 +9,7 @@ from google.genai.errors import APIError
 VECTOR_STORE_FILE = 'mehman_faiss.bin'
 METADATA_FILE = 'mehman_faiss.bin_metadata.json'
 EMBEDDING_MODEL = 'text-embedding-004'
-GENERATION_MODEL = 'gemini-2.0-flash-lite' # Fast and cheap for chat
+GENERATION_MODEL = 'gemini-2.5-flash-lite' # Fast and cheap for chat
 
 # --- SYSTEM PERSONA (The "Soul" of Mehman) ---
 SYSTEM_PROMPT = """

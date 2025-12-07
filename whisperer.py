@@ -132,6 +132,10 @@ def get_mehman_response(user_question):
 
     # 4. Generate Answer
     try:
+        # Check if client is valid before calling
+        if not client:
+             return "⚠️ Error: Gemini Client not initialized. Please check your API Key in Streamlit Secrets."
+
         response = client.models.generate_content(
             model=GENERATION_MODEL,
             contents=full_prompt,
@@ -140,9 +144,15 @@ def get_mehman_response(user_question):
                 temperature=0.7 
             )
         )
+        
+        # SAFETY CHECK: If the model returns None or empty text
+        if not response.text:
+            return "⚠️ The AI could not generate a response (Possible Safety Block or Rate Limit). Please try rephrasing."
+            
         return response.text
+
     except Exception as e:
-        return f"I'm having trouble thinking right now. Error: {e}"
+        return f"⚠️ I'm having trouble thinking right now. Error: {e}"
 
 # --- TEST AREA (Run this script directly to test) ---
 if __name__ == "__main__":

@@ -4,100 +4,124 @@ from whisperer import get_mehman_response
 
 # --- PAGE CONFIGURATION ---
 st.set_page_config(
-    page_title="Mehman: The Cultural Whisperer",
-    page_icon="🕌",
-    layout="wide",  # 'wide' layout uses more screen space
+    page_title="Mehman Chatbot",
+    page_icon="💬",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# --- CUSTOM CSS STYLING ---
+# --- CUSTOM CSS (To mimic the screenshot's clean look) ---
 st.markdown("""
 <style>
-    /* Give the main title a nice look */
-    .main-title {
+    /* 1. HIDE RADIO BUTTON CIRCLES to make them look like a menu */
+    .stRadio [role=radiogroup] {
+        padding-top: 10px;
+    }
+    .stRadio label {
+        background-color: transparent;
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+    .stRadio label:hover {
+        background-color: #f0f2f6;
+    }
+    /* Hide the actual circle */
+    .stRadio div[role='radiogroup'] > label > div:first-child {
+        display: none; 
+    }
+    
+    /* 2. HEADER STYLING */
+    .header-title {
         font-size: 3rem;
-        color: #2E7D32; /* Pakistan Green */
-        text-align: center;
         font-weight: 700;
-        margin-bottom: 0px;
+        margin-bottom: 0;
+        color: #31333F; /* Streamlit Dark Grey */
     }
-    .subtitle {
-        text-align: center;
-        color: #555;
-        margin-bottom: 30px;
-        font-style: italic;
+    .header-subtitle {
+        font-size: 1.2rem;
+        color: #808495;
+        margin-bottom: 2rem;
     }
-    /* Style the chat bubbles slightly */
+    
+    /* 3. CHAT BUBBLE TWEAKS */
     .stChatMessage {
-        padding: 1rem;
-        border-radius: 10px;
-        margin-bottom: 10px;
+        background-color: transparent;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR ---
+# --- SIDEBAR NAVIGATION (Matches the screenshot left panel) ---
 with st.sidebar:
-    st.image("https://www.flaticon.com/free-icon/pakistan_3973547", width=80)
-    st.title("About Mehman")
-    st.markdown("""
-    **Mehman** is your AI companion for traveling in Pakistan. 
     
-    它 It is powered by:
-    - 🧠 **Real Reddit Conversations** (RAG)
-    - 🤖 **Google Gemini AI**
-    """)
     
-    st.divider()
+    # Navigation Menu (Hidden Radio Button)
+    selected_page = st.radio(
+        "Navigation", 
+        ["Chatbot", "Translator", "About & Safety"],
+        label_visibility="collapsed"
+    )
+
+    st.markdown("---")
+
+
+    st.markdown("---")
     
-    st.warning("⚠️ **Safety Disclaimer:**\nMehman provides advice based on public forums. Always check official government travel advisories for critical safety updates.")
+    # Bottom Links
+    st.markdown("[Get a Gemini API key](https://aistudio.google.com/)")
+    st.markdown("[View the source code](#)")
     
-    st.divider()
-    
-    # Reset Button
-    if st.button("🗑️ Clear Conversation", use_container_width=True):
+    if st.button("🗑️ Clear Chat History", type="secondary"):
         st.session_state.messages = []
         st.rerun()
 
-# --- MAIN HEADER ---
-st.markdown('<p class="main-title">🕌 Mehman</p>', unsafe_allow_html=True)
-st.markdown('<p class="subtitle">Your AI Guide to Pakistani Etiquette, Safety, and Logistics</p>', unsafe_allow_html=True)
+# --- PAGE 1: CHATBOT (Main Interface) ---
+if selected_page == "Chatbot":
+    
+    # 1. The Header (Matches the "Chatbot" title in image)
+    col1, col2 = st.columns([1, 15])
+    with col1:
+        st.image("https://cdn-icons-png.flaticon.com/512/2040/2040946.png", width=50) # Generic Chat Icon
+    with col2:
+        st.markdown('<h1 style="margin-top: -10px;">Mehman</h1>', unsafe_allow_html=True)
+    
+    st.caption("🚀 A Streamlit chatbot powered by **Mehman Logic**")
 
-# --- TABS LAYOUT (Pre-work for Part 6) ---
-tab1, tab2 = st.tabs(["💬 Ask Advice", "🗣️ Translator (Coming Soon)"])
-
-# --- TAB 1: THE CHATBOT ---
-with tab1:
-    # Initialize chat history
+    # 2. Chat Logic
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Display chat messages from history on app rerun
+    # Display History
     for message in st.session_state.messages:
-        with st.chat_message(message["role"], avatar="👤" if message["role"] == "user" else "🕌"):
+        with st.chat_message(message["role"], avatar="🧙‍♂️" if message["role"] == "assistant" else "👤"):
             st.markdown(message["content"])
 
-    # Accept user input
-    if prompt := st.chat_input("Ex: Is it safe to wear shorts in Lahore?"):
+    # Initial Bot Greeting (if empty)
+    if not st.session_state.messages:
+        with st.chat_message("assistant", avatar="🧙‍♂️"):
+            st.markdown("How can I help you navigate Pakistan today?")
+
+    # Input Area
+    if prompt := st.chat_input("Your message"):
         
-        # 1. Show User Message
+        # User Message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user", avatar="👤"):
             st.markdown(prompt)
 
-        # 2. Generate Assistant Response
-        with st.chat_message("assistant", avatar="🕌"):
+        # Assistant Response
+        with st.chat_message("assistant", avatar="🧙‍♂️"):
             message_placeholder = st.empty()
             full_response = ""
             
-            with st.spinner("Consulting local advice..."):
+            with st.spinner("Thinking..."):
                 try:
                     assistant_response = get_mehman_response(prompt)
                 except Exception as e:
                     assistant_response = f"⚠️ Error: {str(e)}"
-
-            # Typing effect
-            # (Safety check: ensure response is a string)
+            
+            # Typewriter effect
             if not isinstance(assistant_response, str):
                 assistant_response = str(assistant_response)
 
@@ -108,11 +132,20 @@ with tab1:
             
             message_placeholder.markdown(full_response)
         
-        # 3. Save Assistant Message
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 
-# --- TAB 2: TRANSLATOR (Placeholders) ---
-with tab2:
-    st.header("🇵🇰 Urdu Translator")
-    st.caption("Type a phrase in English to see it in Urdu script and Roman Urdu.")
-    st.info("🛠️ This feature is under construction. (Part 6)")
+# --- PAGE 2: TRANSLATOR (Placeholder) ---
+elif selected_page == "Translator":
+    st.title("🗣️ Translator")
+    st.caption("Translate English to Urdu (Coming Soon)")
+    st.info("This page is under construction.")
+
+# --- PAGE 3: ABOUT (Placeholder) ---
+elif selected_page == "About & Safety":
+    st.title("ℹ️ About Mehman")
+    st.warning("Always check official government travel advisories.")
+    st.markdown("""
+    **Mehman** is an AI powered by:
+    - Real Reddit Conversations
+    - Google Gemini AI
+    """)

@@ -9,136 +9,177 @@ from google.genai.errors import APIError
 VECTOR_STORE_FILE = 'mehman_faiss.bin'
 METADATA_FILE = 'mehman_faiss.bin_metadata.json'
 EMBEDDING_MODEL = 'text-embedding-004'
-GENERATION_MODEL = 'gemini-2.5-flash-lite' # Fast and cheap for chat
+GENERATION_MODEL = 'gemini-2.5-flash' # Using the stable flash model
 
-# --- SYSTEM PERSONA (The "Soul" of Mehman) ---
+# --- SYSTEM PERSONA ---
+
+# --- SYSTEM PERSONA (The "Zindadil" Update) ---
 SYSTEM_PROMPT = """
-You are 'Mehman', a sophisticated and culturally wise travel companion for Pakistan. 
-You are speaking to a foreign tourist who needs clear, practical, and safe advice.
+You are 'Mehman', a warm, lively, and incredibly hospitable Pakistani travel companion. 
+You are not a robot; you are a "Zindadil" (lively hearted) local friend guiding a guest.
 
-### YOUR JOB
-Your task is to read the "Local Insights" provided to you (which are messy snippets from real travelers) and weave them into a **single, smooth, and coherent answer.**
+### YOUR VIBE:
+- **Warmth:** Start answers with "Assalam-o-Alaikum!" or "Jee Ayan Nu!" or "Welcome, my friend!" but also translate these phrases for foreigners.
+- **Hospitality (Mehman-nawazi):** Treat the user like an honored guest. Use phrases like "No worries at all," "You must try this," or "We would love to host you."
+- **Protective:** When giving safety advice, sound like a caring older sibling. "Bhai (Brother)/Sister, just be a little careful here..." or "Best to avoid that area at night, okay?"
+- **Foodie:** If food is mentioned, get excited! Pakistanis love food. "Oh, you cannot miss the Nihari!"
+- **Idioms:** It is okay to use very common Pakistani-English phrases like "Scene on hai" (It's a plan) or "Chai shai" (Tea and snacks), but keep it understandable for a foreigner.
 
-### RULES FOR "SMOOTH" WRITING
-1. **No Robot Talk:** NEVER say "The provided text says," "According to the database," "Context mentions," or "In the snippets."
-2. **Synthesize, Don't List:** Do not give a bulleted list of "User A said this, User B said that." Blend the advice together.
-   - *Bad:* "One person said wear shalwar kameez. Another said jeans are fine."
-   - *Good:* "While jeans are generally acceptable in upscale areas, wearing a shalwar kameez will help you blend in and gain more respect from locals."
-3. **The "Why" Matters:** Always explain the cultural reasoning. Don't just give rules; give the *feeling* of the place.
-4. **Be Warm but Realistic:** Use a hospitable tone ("Welcome," "Don't worry"), but be firm on safety warnings if the data suggests caution.
-5. **Unknowns:** If the Local Insights don't answer the specific question, admit it gracefully: "I don't have a specific local report on that exact location, but generally in Pakistan..."
+### YOUR JOB:
+Read the "Local Insights" provided and synthesize them into a smooth, helpful answer. 
+Do NOT mention "the database" or "the text." Just speak from your heart and knowledge.
 
-### OUTPUT FORMAT
-- Start with a direct, reassuring opening.
-- Provide the synthesized advice in 1-2 smooth paragraphs.
-- End with a short, warm closing (e.g., "Safe travels!" or "Enjoy the chai!").
+### OUTPUT STRUCTURE:
+1. **The Warm Welcome:** A friendly greeting.
+2. **The Real Talk:** Synthesize the advice clearly and practically.
+3. **The Closing:** Something like "Enjoy Pakistan!" or "Safe travels and eat lots of Biryani!"
 """
-# Initialize Gemini Client
+# Initialize Client (Handles both Streamlit Secrets and Local Env)
 try:
-    client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
-except Exception as e:
-    print(f"Error initializing Client: {e}")
+    import streamlit as st
+    if hasattr(st, "secrets") and "GEMINI_API_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_API_KEY"]
+    else:
+        api_key = os.environ.get("GEMINI_API_KEY")
+    client = genai.Client(api_key=api_key)
+except Exception:
     client = None
 
-# Global variables to hold the loaded "brain"
+# Global Brain Variables
 index = None
 chunks = []
 metadata = []
 
 def load_brain():
-    """Loads the FAISS index and metadata from disk only once."""
     global index, chunks, metadata
-    
-    if index is not None:
-        return # Already loaded
-
-    print("🧠 Loading Mehman's brain...")
-    
+    if index is not None: return
     try:
-        # Load FAISS Index
         index = faiss.read_index(VECTOR_STORE_FILE)
-        
-        # Load Metadata (Text chunks)
         with open(METADATA_FILE, 'r', encoding='utf-8') as f:
             data = json.load(f)
             chunks = data['chunks']
             metadata = data['metadata']
-            
-        print(f"✅ Brain loaded! ({index.ntotal} memories available)")
-        
     except Exception as e:
         print(f"❌ Error loading brain: {e}")
-        print("Did you run rag_backend.py successfully?")
 
-def search_brain(query, k=3):
+def needs_context(query):
+    """
+    Heuristic: Returns True if the query likely refers to previous context.
+    """
+    triggers = ["it", "that", "there", "this", "he", "she", "they", "them", "those","do","does"]
+    query_words = query.lower().split()
+    
+    # Condition 1: Very short queries ("And food?", "Is it safe?")
+    if len(query_words) < 5:
+        return True
+        
+    # Condition 2: Contains pronouns ("Is *it* famous?")
+    if any(word in triggers for word in query_words):
+        return True
+        
+    return False
+
+def rewrite_query(user_question, chat_history):
+    """
+    Uses the LLM to rewrite the query. This is the 'Costly' but 'Smart' step.
+    """
+    if not chat_history: return user_question
+    
+    # We only need the last few turns
+    recent_history = chat_history[-3:]
+    history_str = "\n".join(recent_history)
+    
+    prompt = f"""
+    The user is asking a follow-up question. Rewrite it to be a standalone search query that includes the necessary context (like the city name).
+    
+    Chat History:
+    {history_str}
+    
+    Follow-up Question: {user_question}
+    
+    Standalone Search Query (Output ONLY the query):
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model=GENERATION_MODEL,
+            contents=prompt
+        )
+        rewritten = response.text.strip()
+        print(f"🔄 Rewrote: '{user_question}' -> '{rewritten}'")
+        return rewritten
+    except Exception:
+        return user_question
+
+def search_brain(query, k=4):
     """Embeds the query and searches for the top k most relevant chunks."""
-    if not client or index is None:
-        return []
+    if not client or index is None: return []
 
     try:
-        # 1. Embed the user's question
         response = client.models.embed_content(
             model=EMBEDDING_MODEL,
             contents=query,
-            config=genai.types.EmbedContentConfig(
-                task_type="RETRIEVAL_QUERY" 
-            )
+            config=genai.types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
         )
         
-        # Extract vector (handling the object wrapper if necessary)
         if hasattr(response, 'embeddings'):
-            # The new SDK might return a list of objects
-            query_vector = np.array([e.values for e in response.embeddings])
+             query_vector = np.array([e.values for e in response.embeddings])
         else:
-            # Fallback
-            query_vector = np.array(response.embedding)
+             query_vector = np.array(response.embedding)
 
-        # 2. Search FAISS
-        # D = distances, I = indices of the nearest neighbors
         D, I = index.search(query_vector, k)
         
-        # 3. Retrieve the actual text for the top results
         results = []
         for idx in I[0]:
             if idx < len(chunks):
                 results.append(chunks[idx])
-                
         return results
 
     except Exception as e:
-        print(f"⚠️ Search error: {e}")
-        return []
+        return [f"Search Error: {e}"]
 
-def get_mehman_response(user_question):
-    """The main function called by the UI."""
-    # Ensure brain is loaded
-    if index is None:
-        load_brain()
+def get_mehman_response(user_question, chat_history_context=[]):
+    """
+    The Main Brain Function
+    """
+    if index is None: load_brain()
+    if not client: return "⚠️ API Key Error."
 
-    # 1. Retrieve relevant advice
-    retrieved_chunks = search_brain(user_question)
+    # --- STEP 1: SMART QUERY REWRITING ---
+    search_query = user_question
     
-    # 2. Format context for the LLM
+    # Check if we need to pay for a rewrite
+    if chat_history_context and needs_context(user_question):
+        # "Is it famous?" -> triggers Rewrite
+        search_query = rewrite_query(user_question, chat_history_context)
+    else:
+        # "Is Lahore famous?" -> Zero Cost (Pass through)
+        pass
+    
+    # --- STEP 2: RETRIEVE ---
+    # Now we search for "Is Lahore a famous city?" (Much better results)
+    retrieved_chunks = search_brain(search_query)
+    
+    # --- STEP 3: GENERATE ---
     context_text = "\n\n".join([f"- {chunk}" for chunk in retrieved_chunks])
-    
-    if not context_text:
-        context_text = "No specific local advice found in database."
+    if not context_text: context_text = "No specific local advice found."
 
-    # 3. Construct the full prompt (New "Smooth" Structure)
+    # We still give the LLM the history so the TONE is conversational
+    limited_history = chat_history_context[-3:]
+    history_text = "\n".join(limited_history)
+
     full_prompt = f"""
+    CHAT HISTORY:
+    {history_text}
+    
     USER QUESTION:
     {user_question}
     
-    RAW LOCAL INSIGHTS (Background Data - Synthesize this, do not quote it directly):
+    RAW LOCAL INSIGHTS (Background Data found for "{search_query}"):
     {context_text}
     """
 
-    # 4. Generate Answer
     try:
-        # Check if client is valid before calling
-        if not client:
-             return "⚠️ Error: Gemini Client not initialized. Please check your API Key in Streamlit Secrets."
-
         response = client.models.generate_content(
             model=GENERATION_MODEL,
             contents=full_prompt,
@@ -147,28 +188,7 @@ def get_mehman_response(user_question):
                 temperature=0.7 
             )
         )
-        
-        # SAFETY CHECK: If the model returns None or empty text
-        if not response.text:
-            return "⚠️ The AI could not generate a response (Possible Safety Block or Rate Limit). Please try rephrasing."
-            
-        return response.text
+        return response.text if response.text else "⚠️ Empty response from AI."
 
     except Exception as e:
-        return f"⚠️ I'm having trouble thinking right now. Error: {e}"
-
-# --- TEST AREA (Run this script directly to test) ---
-if __name__ == "__main__":
-    # This block only runs if you type 'python whisperer.py'
-    load_brain()
-    
-    while True:
-        q = input("\nAsk Mehman (or 'q' to quit): ")
-        if q.lower() == 'q':
-            break
-        
-        print("\nThinking...")
-        answer = get_mehman_response(q)
-        print("\n🤖 Mehman says:\n" + "-"*40)
-        print(answer)
-        print("-" * 40)
+        return f"⚠️ Error: {e}"

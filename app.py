@@ -86,7 +86,7 @@ if selected_page == "Chatbot":
     with col2:
         st.markdown('<h1 style="margin-top: -10px;">Mehman</h1>', unsafe_allow_html=True)
     
-    st.caption("🚀 A Streamlit chatbot powered by **Mehman Logic**")
+    st.caption("🚀 A Chatbot powered by **Mehman Logic**")
 
     # 2. Chat Logic
     if "messages" not in st.session_state:
@@ -117,7 +117,16 @@ if selected_page == "Chatbot":
             
             with st.spinner("Thinking..."):
                 try:
-                    assistant_response = get_mehman_response(prompt)
+                    # --- NEW CONTEXT LOGIC ---
+                    # 1. Grab the last 4 messages so the bot remembers the conversation
+                    history_context = []
+                    for msg in st.session_state.messages[-4:]:
+                        role = "User" if msg["role"] == "user" else "Mehman"
+                        history_context.append(f"{role}: {msg['content']}")
+
+                    # 2. Send the prompt AND the history to the backend
+                    assistant_response = get_mehman_response(prompt, chat_history_context=history_context)
+                    # -------------------------
                 except Exception as e:
                     assistant_response = f"⚠️ Error: {str(e)}"
             

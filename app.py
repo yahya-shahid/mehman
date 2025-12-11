@@ -1,4 +1,5 @@
 import streamlit as st
+import re
 import time
 from whisperer import get_mehman_response
 
@@ -48,6 +49,25 @@ st.markdown("""
     /* 3. CHAT BUBBLE TWEAKS */
     .stChatMessage {
         background-color: transparent;
+    }
+        
+    
+    /* Make headers pop */
+    .stMarkdown h3 {
+        color: #2E7D32; /* Pakistan Green */
+        margin-top: 20px;
+        font-size: 1.2rem;
+    }
+    
+    /* Add spacing to lists */
+    .stMarkdown ul {
+        margin-bottom: 20px;
+    }
+    
+    /* Make bold text stand out */
+    .stMarkdown strong {
+        color: #31333F;
+        font-weight: 700;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -130,14 +150,18 @@ if selected_page == "Chatbot":
                 except Exception as e:
                     assistant_response = f"⚠️ Error: {str(e)}"
             
-            # Typewriter effect
+          # Typewriter effect (Format-Safe Version)
             if not isinstance(assistant_response, str):
                 assistant_response = str(assistant_response)
 
-            for chunk in assistant_response.split():
-                full_response += chunk + " "
-                time.sleep(0.05)
+            # 1. Use Regex to split by tokens BUT keep the whitespace/newlines
+            import re
+            tokens = re.split(r'(\s+)', assistant_response)
+            
+            for token in tokens:
+                full_response += token
                 message_placeholder.markdown(full_response + "▌")
+                time.sleep(0.02) # Slightly faster typing feels smoother
             
             message_placeholder.markdown(full_response)
         

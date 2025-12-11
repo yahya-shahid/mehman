@@ -26,7 +26,7 @@ st.markdown("""
         transition: background-color 0.3s;
     }
     .stRadio label:hover {
-        background-color: #f0f2f6;
+        background-color: #808495;
     }
     /* Hide the actual circle */
     .stRadio div[role='radiogroup'] > label > div:first-child {

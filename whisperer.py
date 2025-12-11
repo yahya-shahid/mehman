@@ -206,3 +206,34 @@ def get_mehman_response(user_question, chat_history_context=[]):
 
     except Exception as e:
         return f"⚠️ Error: {e}"
+    
+
+def get_mehman_translation(english_text):
+    """
+    Translates English to Polite Urdu (Script + Roman).
+    """
+    if not client: return None
+
+    prompt = f"""
+    Translate the following English text into Urdu.
+    
+    ### RULES:
+    1. **Politeness:** Convert the tone to be very polite and respectful (use "Aap", not "Tu").
+    2. **Format:** Output the result strictly as a JSON object with two keys: "urdu_script" and "roman_urdu".
+    
+    English Text: "{english_text}"
+    
+    JSON Output:
+    """
+    
+    try:
+        response = client.models.generate_content(
+            model=GENERATION_MODEL,
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(
+                response_mime_type="application/json" 
+            )
+        )
+        return json.loads(response.text)
+    except Exception as e:
+        return {"error": str(e)}

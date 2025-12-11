@@ -68,6 +68,27 @@ st.markdown("""
     .stMarkdown strong {
         color: #f5f5f7;
         font-weight: 700;
+            
+    /* 4. TRANSLATOR CARD STYLING */
+    .urdu-text {
+        font-family: 'Noto Nastaliq Urdu', serif; /* Tries to use a nice Urdu font */
+        font-size: 32px;
+        text-align: right;
+        color: #2E7D32;
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        margin-top: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .roman-text {
+        font-size: 18px;
+        text-align: center;
+        color: #555;
+        font-style: italic;
+        margin-top: 5px;
+        margin-bottom: 20px;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -167,11 +188,45 @@ if selected_page == "Chatbot":
         
         st.session_state.messages.append({"role": "assistant", "content": full_response})
 
-# --- PAGE 2: TRANSLATOR (Placeholder) ---
+# --- PAGE 2: TRANSLATOR (Active) ---
 elif selected_page == "Translator":
-    st.title("🗣️ Translator")
-    st.caption("Translate English to Urdu (Coming Soon)")
-    st.info("This page is under construction.")
+    
+    # Header
+    col1, col2 = st.columns([1, 15])
+    with col1:
+        st.image("https://cdn-icons-png.flaticon.com/512/3898/3898150.png", width=50) 
+    with col2:
+        st.markdown('<h1 style="margin-top: -10px;">Cultural Bridge</h1>', unsafe_allow_html=True)
+    
+    st.caption("🗣️ Translate English to **Polite Urdu** (Native Script & Roman)")
+
+    # Input Area
+    st.markdown("### What do you want to say?")
+    to_translate = st.text_area("", placeholder="Ex: How much is this? / I need water / Where is the bathroom?", height=100)
+    
+    # Translate Action
+    if st.button("Translate to Urdu", use_container_width=True, type="primary"):
+        if to_translate:
+            # Inline import to keep it simple
+            from whisperer import get_mehman_translation
+            
+            with st.spinner("Consulting the linguist..."):
+                translation = get_mehman_translation(to_translate)
+            
+            if translation and "urdu_script" in translation:
+                # 1. The Visual Card (For the Local)
+                st.markdown("#### 📱 Show this to the local:")
+                st.markdown(f'<div class="urdu-text">{translation["urdu_script"]}</div>', unsafe_allow_html=True)
+                
+                # 2. The Pronunciation (For You)
+                st.markdown("#### 🗣️ You say:")
+                st.markdown(f'<p class="roman-text">"{translation["roman_urdu"]}"</p>', unsafe_allow_html=True)
+                
+                # 3. Cultural Tip
+                st.info("💡 **Mehman Tip:** We automatically made this polite ('Aap' instead of 'Tu'). Placing your hand on your heart while asking shows extra respect!")
+                
+            else:
+                st.error("⚠️ Translation failed. Please try again.")
 
 # --- PAGE 3: ABOUT (Placeholder) ---
 elif selected_page == "About & Safety":

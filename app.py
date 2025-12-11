@@ -38,7 +38,7 @@ st.markdown("""
         font-size: 3rem;
         font-weight: 700;
         margin-bottom: 0;
-        color: #31333F; /* Streamlit Dark Grey */
+        color:#f5f5f7; /* Streamlit Dark Grey */
     }
     .header-subtitle {
         font-size: 1.2rem;
@@ -66,7 +66,7 @@ st.markdown("""
     
     /* Make bold text stand out */
     .stMarkdown strong {
-        color: #31333F;
+        color: #f5f5f7;
         font-weight: 700;
     }
 </style>

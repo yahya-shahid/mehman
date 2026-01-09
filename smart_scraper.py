@@ -42,7 +42,7 @@ def main():
         except Exception as e:
             print(f"   ⚠️ Could not read existing data (starting fresh): {e}")
 
-    # 2. Read the Links File (The "Target")
+    # 2. Read the Links File our  Target
     try:
         # FIX: Added encoding='utf-8' here so it can read the file created by harvester.py
         with open(INPUT_FILE, 'r', encoding='utf-8') as f:

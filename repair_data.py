@@ -1,4 +1,5 @@
-#this file repairs the mehman_data.json file if it is corrupted or incomplete. and that usaully happens if the server flags your request and start playing with your requests.
+#this file repairs the mehman_data.json file if it is corrupted or incomplete.
+#and that usaully happens if the server flags your request and start playing with your requests.
 import json
 import os
 

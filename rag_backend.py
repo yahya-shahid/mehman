@@ -64,7 +64,7 @@ def create_and_save_vector_store(chunks, metadata_list):
         vector = get_local_embedding(chunk)
         if vector:
             all_embeddings.append(vector)
-        if i % 50 == 0 and i > 0:
+        if i % 5 == 0 and i > 0:
             print(f"   Processed {i}/{len(chunks)} vectors...")
 
     if not all_embeddings:

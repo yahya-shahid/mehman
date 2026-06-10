@@ -1,13 +1,35 @@
-# --- Security (CRITICAL) ---
-.streamlit/secrets.toml
+# ====================================================================
+# 🕌 MEHMAN PROJECT GLOBAL GITIGNORE CONFIGURATION
+# ====================================================================
+
+# --- Security & Credentials (CRITICAL) ---
 .env
+*.env
+.streamlit/secrets.toml
 
-# --- Python ---
-__pycache__/
-*.py[cod]
-venv/
-.venv/
+# --- Python Engine Backend Dependencies ---
+backend/__pycache__/
+backend/*.py[cod]
+backend/*$py.class
+backend/venv/
+backend/.venv/
+backend/env/
 
-# --- OS Generated ---
+# --- Local Vector Base Binary Matrices & Cache Data ---
+backend/mehman_faiss.bin
+backend/mehman_faiss.bin_metadata.json
+
+# --- React/TypeScript Frontend UI Dependencies ---
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.layout/
+
+# --- Development Logs & System Artifacts ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.eslintcache
 .DS_Store
 Thumbs.db

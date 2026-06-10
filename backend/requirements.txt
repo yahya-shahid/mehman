@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+python-dotenv
+requests
+faiss-cpu
+numpy
+#libraries for this project

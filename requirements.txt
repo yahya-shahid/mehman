@@ -1,6 +1,0 @@
-streamlit
-google-genai
-faiss-cpu
-numpy
-requests
-#libraries for this project

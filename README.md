@@ -4,7 +4,7 @@ Mehman (*Urdu for Guest*) is a decoupled full-stack Retrieval-Augmented Generati
 
 ---
 
-## 🗺️ Architectural Evolution & Engineering Journey
+## Architectural Evolution & Engineering Journey
 
 The system underwent a rigorous iterative progression to achieve its current production-grade performance thresholds:
 
@@ -24,7 +24,7 @@ To resolve mobile hardware compute restrictions while satisfying data ownership 
 
 ---
 
-## 🏗️ Technical Stack Details
+## Technical Stack Details
 
 ### Core Application Backbones
 * **UI Client:** React 18.3.1, TypeScript, Vite 6.3.5, React Router 7.13.0
@@ -39,7 +39,7 @@ To resolve mobile hardware compute restrictions while satisfying data ownership 
 
 ---
 
-## 🚀 Execution & Setup Protocol
+## Execution & Setup Protocol
 
 ### Backend Workspace Setup
 ```bash
